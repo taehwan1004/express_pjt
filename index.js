@@ -1,5 +1,12 @@
 const express = require('express');
 const app = express();
+
+
+const cors = require('cors');
+app.use(cors());
+
+
+app.use(express.json())
 const PORT = 3000;
 
 const users =  [
@@ -160,17 +167,21 @@ app.get('/users', (req, res) => {
     res.json(users);
   }); 
    
-app.get('/articles', (req, res) => {
-    res.json(articles);
-  }); 
+//app.get('/articles', (req, res) => {
+  //  res.json(articles);
+  //}); 
 app.get('/test', (req, res) => {
 
   //console.log(req.query)
   console.log(req.query.id)
     res.send('ok');
 
-  }); 
+  });  
    
+  
+
+
+
 app.get('/user/:id', (req, res)=>{
 
   
@@ -187,5 +198,51 @@ for(let i =0;i < user_len ; i++){
 }
 
 
-  res.send('ok')
+  res.send('not found 404')
 })
+
+app.get('/articles', (req, res)=>{
+  console.log(req);
+res.json(articles)
+
+})
+app.delete('/articles/:id', (req, res) => {
+  const articleId = parseInt(req.params.id, 10);
+
+  // 게시글 배열에서 삭제할 게시글 찾기
+  const articleIndex = articles.findIndex(article => article.id === articleId);
+
+  if (articleIndex !== -1) {
+    articles.splice(articleIndex, 1); // 해당 게시글 삭제
+    res.status(200).json({ message: '게시글이 삭제되었습니다.' });
+  } else {
+    res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+  }
+});
+
+app.post('/articles', (req,res)=>{
+
+  let data = req.body
+  let lastId = articles[articles.length - 1].id;
+  data.id = lastId + 1
+
+  articles.push(data)
+  return res.json("ok")
+})
+
+
+
+
+
+app.get('/articles/:id', (req,res)=>{
+
+  let article_id = req.params.id
+
+  for(let i = 0; i < articles.length ; i++){
+    if(articles[i].id == article_id){
+      return res.json(articles[i])
+    }
+  }
+  return res.json("없었습니다")
+})
+
