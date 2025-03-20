@@ -36,6 +36,13 @@ app.post('/articles', (req, res) => {
 app.get('/articles', (req, res) => {
 
 
+  });  
+   
+  
+
+
+
+app.get('/user/:id', (req, res)=>{
     db.all('SELECT * FROM articles', [], (err, rows) => {
         if (err) {
             return res.status(500).json({ error: err.message });
