@@ -21,5 +21,26 @@ function initDB() {
   });
 }
 
+// comments 테이블 생성
+function initCommentsTable() {
+  db.run(`
+    CREATE TABLE IF NOT EXISTS comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      content TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE
+      article_id INTEGER,
+    )
+  `, (err) => {
+    if (err) {
+      console.error("comments 테이블 생성 에러:", err);
+    } else {
+      console.log("테이블 준비 완료(comments)");
+    }
+  });
+}
+
+
 initDB();
+initCommentsTable();
 
