@@ -1,7 +1,9 @@
 const express = require('express');
 const app = express();
-
+const bcrypt = require('bcrypt');
 const cors = require('cors')
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = 'mysecretkey';
 app.use(cors())
 
 
@@ -23,17 +25,32 @@ app.listen(PORT, () => {
 
 
 app.post('/articles', (req, res) => {
-    const { title, content } = req.body;
+    const token = req.headers.authorization?.split(' ')[1]; // Authorization 헤더에서 토큰 추출
 
-    db.run(`INSERT INTO articles (title, content) VALUES (?, ?)`,
-        [title, content],
-        function (err) {
-            if (err) {
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ id: this.lastID, title, content });
-        });
+    if (!token) {
+        return res.status(401).json({ error: '로그인 후 게시글을 작성할 수 있습니다.' });
+    }
+
+    // 토큰 검증
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+        }
+
+        // 토큰 검증이 성공하면 게시글 작성
+        const { title, content } = req.body;
+
+        db.run(`INSERT INTO articles (title, content) VALUES (?, ?)`,
+            [title, content],
+            function (err) {
+                if (err) {
+                    return res.status(500).json({ error: err.message });
+                }
+                res.json({ id: this.lastID, title, content });
+            });
+    });
 });
+
 
 
 app.get('/articles', (req, res) => {
@@ -184,3 +201,88 @@ app.get("/articles/:id/comments", (req, res) => {
         });
     });
 });
+app.post('/users', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요' });
+    }
+
+    try {
+        // 비밀번호 해싱
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        db.run(
+            `INSERT INTO users (email, password) VALUES (?, ?)`,
+            [email, hashedPassword],
+            function (err) {
+                if (err) {
+                    return res.status(500).json({ error: '회원가입 실패', details: err.message });
+                }
+                res.status(201).json({ message: '회원가입 성공', userId: this.lastID });
+            }
+        );
+    } catch (error) {
+        res.status(500).json({ error: '서버 오류' });
+    }
+});
+
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: '이메일과 비밀번호를 입력하세요' });
+    }
+
+    db.get('SELECT * FROM users WHERE email = ?', [email], async (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: '서버 오류' });
+        }
+        if (!user) {
+            return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: '비밀번호가 일치하지 않습니다.' });
+        }
+
+        // JWT 토큰 생성
+        const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY, { expiresIn: '1h' });
+
+        res.json({ message: '로그인 성공', token });
+    });
+});
+
+// 사용자 정보 반환
+app.get('/user-info', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ error: '토큰이 없습니다.' });
+    }
+
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+        }
+        res.json({ email: decoded.email });
+    });
+});
+
+
+
+app.get('/logintest', (req, res) => {
+
+    console.log(req.headers.authorization.split(' ')[1])
+    let token = req.headers.authorization.split(' ')[1]
+
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.send("err")
+        }
+        return res.send('로그인 성공')
+    })
+
+
+})
