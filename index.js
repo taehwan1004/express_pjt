@@ -286,3 +286,32 @@ app.get('/logintest', (req, res) => {
 
 
 })
+
+app.delete('/users', (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: '토큰이 없습니다.' });
+    }
+
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: '유효하지 않은 토큰입니다.' });
+        }
+
+        const userEmail = decoded.email;
+
+        // 데이터베이스에서 사용자 삭제
+        db.run('DELETE FROM users WHERE email = ?', [userEmail], function (err) {
+            if (err) {
+                return res.status(500).json({ error: '계정 삭제 실패', details: err.message });
+            }
+
+            if (this.changes === 0) {
+                return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+            }
+
+            res.json({ message: '계정이 성공적으로 삭제되었습니다.' });
+        });
+    });
+});
